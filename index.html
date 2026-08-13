@@ -387,9 +387,19 @@ function isOwnerGoogle(user){
   return !!user && String(user.email||'').toLowerCase()===OWNER_GOOGLE_EMAIL.toLowerCase();
 }
 
-async function checkAdmin(user){
-  const snap=await getDoc(paths(user.uid).admin);
-  return snap.exists() && snap.data().active===true;
+async function checkAdmin(user) {
+  if (!user) return false;
+
+  // Sua conta Google é proprietária e não precisa consultar /admins
+  if (isOwnerGoogle(user)) {
+    return true;
+  }
+
+  const snap = await getDoc(
+    doc(firestore, 'admins', user.uid)
+  );
+
+  return snap.exists() && snap.data().active === true;
 }
 
 function hasUserAccess(a){
@@ -650,8 +660,18 @@ onAuthStateChanged(auth,async user=>{
   }
 
   $('authScreen').classList.add('hidden');
-  const owner=isOwnerGoogle(user);
-  isAdminUser=owner ? true : await checkAdmin(user);
+ const owner = isOwnerGoogle(user);
+
+if (owner) {
+  isAdminUser = true;
+} else {
+  try {
+    isAdminUser = await checkAdmin(user);
+  } catch (e) {
+    console.error('Erro ao verificar admin:', e);
+    isAdminUser = false;
+  }
+}
 
   if(owner){
     // Conta proprietária: acesso ilimitado ao próprio controle + aba administrativa.
