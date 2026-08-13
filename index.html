@@ -25,6 +25,25 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
 .payCard h1{margin:0 0 8px}.adminWrap{display:none;max-width:1350px;margin:auto;padding:24px}.adminTop{background:linear-gradient(135deg,#111827,#7c3aed);color:#fff;padding:22px;border-radius:20px;margin-bottom:18px}
 .adminStats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.adminTableWrap{overflow:auto}.tag{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800}
 .tag-trial{background:#dbeafe;color:#1d4ed8}.tag-active{background:#dcfce7;color:#15803d}.tag-frozen{background:#fef3c7;color:#92400e}.tag-cancelled{background:#fee2e2;color:#b91c1c}
+.trialCard{display:none;margin-top:16px;padding:16px 18px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.11);backdrop-filter:blur(8px);border-radius:16px}
+.trialHead{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.trialBadge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:12px;font-weight:800}
+.trialClock{font-size:22px;font-weight:800;letter-spacing:.2px}
+.trialMeta{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.trialMetaBox{padding:10px 12px;border-radius:12px;background:rgba(15,23,42,.20)}
+.trialMetaBox span{display:block;font-size:11px;color:#dbeafe;margin-bottom:4px}
+.trialMetaBox strong{font-size:13px}
+.trialProgress{height:8px;background:rgba(255,255,255,.20);border-radius:999px;overflow:hidden;margin-top:12px}
+.trialProgressBar{height:100%;background:#fff;border-radius:999px;width:100%;transition:width .6s ease}
+.trialFoot{display:flex;justify-content:space-between;gap:12px;margin-top:7px;font-size:11px;color:#dbeafe}
+.welcomeOverlay{position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.72);display:none;align-items:center;justify-content:center;padding:20px}
+.welcomeCard{width:min(500px,100%);background:#fff;border-radius:24px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.32)}
+.welcomeIcon{width:54px;height:54px;border-radius:16px;background:#dbeafe;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;margin-bottom:16px}
+.welcomeCard h2{font-size:25px;margin:0 0 8px}.welcomeCard p{color:#64748b;line-height:1.55}
+.welcomeSummary{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin:16px 0}
+.welcomeSummary .rowline{margin:7px 0}
+@media(max-width:600px){.trialMeta{grid-template-columns:1fr}.trialClock{font-size:18px}}
+
 @media(max-width:800px){.adminStats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}}@media(max-width:520px){.grid{grid-template-columns:1fr}.wrap{padding:12px}table{display:block;overflow:auto}}
 </style>
@@ -91,6 +110,21 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
   </div>
 </div>
 
+<div id="welcomeTrial" class="welcomeOverlay">
+  <div class="welcomeCard">
+    <div class="welcomeIcon">✓</div>
+    <h2>Seu teste de 7 dias começou!</h2>
+    <p>Seja bem-vindo ao Controle Financeiro + Horas Extras. Durante este período você terá acesso completo aos recursos do sistema.</p>
+    <div class="welcomeSummary">
+      <div class="rowline"><span>Início</span><strong id="welcomeStart">—</strong></div>
+      <div class="rowline"><span>Término</span><strong id="welcomeEnd">—</strong></div>
+      <div class="rowline"><span>Duração</span><strong>7 dias completos</strong></div>
+    </div>
+    <p class="small">O cronômetro do seu teste ficará visível no topo do painel para você acompanhar o tempo restante.</p>
+    <button id="btnWelcomeTrial" class="btn-primary" style="width:100%;margin-top:8px">Começar a usar</button>
+  </div>
+</div>
+
 <div id="app">
 <div class="wrap">
 <div class="hero">
@@ -102,6 +136,25 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
       <button class="btn-light" style="margin-top:8px" id="btnSair">Sair</button>
     </div>
   </div>
+  <div id="trialCard" class="trialCard">
+    <div class="trialHead">
+      <div>
+        <div class="trialBadge">⏳ TESTE GRÁTIS DE 7 DIAS</div>
+        <div style="margin-top:8px;font-size:13px;color:#dbeafe">Aproveite todos os recursos enquanto seu período gratuito estiver ativo.</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:#dbeafe;margin-bottom:3px">TEMPO RESTANTE</div>
+        <div id="trialClock" class="trialClock">7d 00h 00min 00s</div>
+      </div>
+    </div>
+    <div class="trialMeta">
+      <div class="trialMetaBox"><span>INÍCIO DO TESTE</span><strong id="trialStart">—</strong></div>
+      <div class="trialMetaBox"><span>FIM DO TESTE</span><strong id="trialEnd">—</strong></div>
+    </div>
+    <div class="trialProgress"><div id="trialProgressBar" class="trialProgressBar"></div></div>
+    <div class="trialFoot"><span id="trialElapsed">Iniciado agora</span><span id="trialPercent">100% disponível</span></div>
+  </div>
+
   <div id="ownerNav" class="actions hidden" style="margin-top:16px">
     <button class="btn-light" id="btnOwnerControle">Meu controle</button>
     <button class="btn-dark" id="btnOwnerAdmin">Administração</button>
@@ -248,7 +301,7 @@ const DEFAULT_CONFIG={
   domingoFim:0,
   configurado:false
 };
-let currentUser=null, unsubs=[], accessUnsub=null, adminUnsub=null, isAdminUser=false;
+let currentUser=null, unsubs=[], accessUnsub=null, adminUnsub=null, isAdminUser=false, trialCountdownInterval=null;
 let state={config:{...DEFAULT_CONFIG},hes:[],gastos:[],fechamentos:[]};
 let currentAccess=null, adminUsersCache=[];
 
@@ -361,14 +414,14 @@ function toDate(v){if(!v)return null;if(v.toDate)return v.toDate();if(v instance
 function fmtDateTime(v){const d=toDate(v);return d&&!isNaN(d)?d.toLocaleString('pt-BR'):'—'}
 
 async function ensureAccessDoc(user){
-  if(isOwnerGoogle(user)) return;
+  if(isOwnerGoogle(user)) return {created:false};
   const ref=paths(user.uid).access;
   const snap=await getDoc(ref);
-  if(snap.exists()) return;
+  if(snap.exists()) return {created:false,data:snap.data()};
 
   const now=new Date();
   const trialEnd=addDays(now,7);
-  await setDoc(ref,{
+  const payload={
     uid:user.uid,
     email:user.email||'',
     nome:user.displayName||'',
@@ -380,26 +433,100 @@ async function ensureAccessDoc(user){
     frozenAt:null,
     cancelledAt:null,
     updatedAt:serverTimestamp()
-  });
+  };
+  await setDoc(ref,payload);
+  return {created:true,start:now,end:trialEnd};
 }
 
 function isOwnerGoogle(user){
   return !!user && String(user.email||'').toLowerCase()===OWNER_GOOGLE_EMAIL.toLowerCase();
 }
 
-async function checkAdmin(user) {
-  if (!user) return false;
+async function checkAdmin(user){
+  if(!user) return false;
+  if(isOwnerGoogle(user)) return true;
+  try{
+    const snap=await getDoc(paths(user.uid).admin);
+    return snap.exists() && snap.data().active===true;
+  }catch(e){
+    console.warn('Não foi possível verificar perfil admin:',e.code||e.message);
+    return false;
+  }
+}
 
-  // Sua conta Google é proprietária e não precisa consultar /admins
-  if (isOwnerGoogle(user)) {
-    return true;
+
+function clearTrialCountdown(){
+  if(trialCountdownInterval){
+    clearInterval(trialCountdownInterval);
+    trialCountdownInterval=null;
+  }
+}
+function formatTrialDate(d){
+  return d ? d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+}
+function trialStartFromAccess(a){
+  const created=toDate(a?.createdAt);
+  if(created && !isNaN(created)) return created;
+  const end=toDate(a?.trialEndsAt);
+  if(end && !isNaN(end)) return new Date(end.getTime()-7*24*60*60*1000);
+  return null;
+}
+function updateTrialCard(a){
+  const card=$('trialCard');
+  if(!card) return;
+  if(!a || a.status!=='trial' || isOwnerGoogle(currentUser)){
+    card.style.display='none';
+    clearTrialCountdown();
+    return;
   }
 
-  const snap = await getDoc(
-    doc(firestore, 'admins', user.uid)
-  );
+  const end=toDate(a.trialEndsAt);
+  const start=trialStartFromAccess(a);
+  if(!end || isNaN(end)){
+    card.style.display='none';
+    return;
+  }
 
-  return snap.exists() && snap.data().active === true;
+  card.style.display='block';
+  $('trialStart').textContent=formatTrialDate(start);
+  $('trialEnd').textContent=formatTrialDate(end);
+
+  const renderClock=()=>{
+    const now=new Date();
+    let ms=Math.max(0,end.getTime()-now.getTime());
+    const total=7*24*60*60*1000;
+    const dias=Math.floor(ms/(24*60*60*1000)); ms%=24*60*60*1000;
+    const horas=Math.floor(ms/(60*60*1000)); ms%=60*60*1000;
+    const mins=Math.floor(ms/(60*1000));
+    const secs=Math.floor((ms%(60*1000))/1000);
+    $('trialClock').textContent=`${dias}d ${String(horas).padStart(2,'0')}h ${String(mins).padStart(2,'0')}min ${String(secs).padStart(2,'0')}s`;
+
+    const remaining=Math.max(0,end.getTime()-now.getTime());
+    const pct=Math.max(0,Math.min(100,(remaining/total)*100));
+    $('trialProgressBar').style.width=pct+'%';
+    $('trialPercent').textContent=`${pct.toFixed(1).replace('.',',')}% do teste restante`;
+
+    if(start){
+      const elapsed=Math.max(0,now.getTime()-start.getTime());
+      const elapsedDays=Math.floor(elapsed/(24*60*60*1000));
+      $('trialElapsed').textContent=elapsedDays===0?'Teste iniciado hoje':`${elapsedDays} dia${elapsedDays===1?'':'s'} de teste utilizado${elapsedDays===1?'':'s'}`;
+    }
+
+    if(remaining<=0){
+      clearTrialCountdown();
+      $('trialClock').textContent='Teste encerrado';
+    }
+  };
+
+  renderClock();
+  clearTrialCountdown();
+  trialCountdownInterval=setInterval(renderClock,1000);
+}
+function showTrialWelcome(info){
+  if(!info?.created) return;
+  $('welcomeStart').textContent=formatTrialDate(info.start);
+  $('welcomeEnd').textContent=formatTrialDate(info.end);
+  $('welcomeTrial').style.display='flex';
 }
 
 function hasUserAccess(a){
@@ -439,6 +566,7 @@ function startAccessWatch(user){
   if(accessUnsub)accessUnsub();
   accessUnsub=onSnapshot(paths(user.uid).access,snap=>{
     currentAccess=snap.exists()?snap.data():null;
+    updateTrialCard(currentAccess);
     if(isAdminUser)return;
     if(hasUserAccess(currentAccess)){
       $('paywall').style.display='none';
@@ -641,6 +769,8 @@ document.addEventListener('click',async e=>{
   }
 });
 
+$('btnWelcomeTrial').onclick=()=>{$('welcomeTrial').style.display='none';};
+
 $('btnSair').onclick=()=>signOut(auth);
 
 onAuthStateChanged(auth,async user=>{
@@ -651,6 +781,9 @@ onAuthStateChanged(auth,async user=>{
   currentUser=user;currentAccess=null;isAdminUser=false;
   $('app').style.display='none';$('adminPanel').style.display='none';$('paywall').style.display='none';
   $('ownerNav').classList.add('hidden');
+  $('trialCard').style.display='none';
+  $('welcomeTrial').style.display='none';
+  clearTrialCountdown();
 
   if(!user){
     $('authScreen').classList.remove('hidden');
@@ -660,18 +793,8 @@ onAuthStateChanged(auth,async user=>{
   }
 
   $('authScreen').classList.add('hidden');
- const owner = isOwnerGoogle(user);
-
-if (owner) {
-  isAdminUser = true;
-} else {
-  try {
-    isAdminUser = await checkAdmin(user);
-  } catch (e) {
-    console.error('Erro ao verificar admin:', e);
-    isAdminUser = false;
-  }
-}
+  const owner=isOwnerGoogle(user);
+  isAdminUser=owner ? true : await checkAdmin(user);
 
   if(owner){
     // Conta proprietária: acesso ilimitado ao próprio controle + aba administrativa.
@@ -690,10 +813,11 @@ if (owner) {
     return;
   }
 
-  await ensureAccessDoc(user);
+  const trialInfo=await ensureAccessDoc(user);
   $('userEmail').textContent=user.email||user.displayName||'Conta Google';
   render();
   startAccessWatch(user);
+  if(trialInfo?.created) showTrialWelcome(trialInfo);
 });
 
 $('btnAddHE').onclick=async()=>{
