@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle Financeiro + Horas Extras</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#f3f6fb;color:#1f2937}
+.wrap{max-width:1250px;margin:auto;padding:24px}.hero{background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#fff;padding:24px;border-radius:22px;margin-bottom:20px}
+.hero h1{margin:0 0 8px}.heroTop{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 6px 18px rgba(15,23,42,.07)}
+.metric .label{font-size:13px;color:#64748b}.metric .value{font-size:25px;font-weight:800;margin-top:6px}.good{color:#15803d}.bad{color:#b91c1c}.blue{color:#1d4ed8}
+.section{margin-top:18px}.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#475569}input,select{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:14px}
+button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer}.btn-primary{background:#2563eb;color:white}.btn-dark{background:#0f172a;color:white}.btn-danger{background:#fee2e2;color:#b91c1c}.btn-light{background:#e2e8f0;color:#0f172a}.btn-success{background:#15803d;color:white}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{padding:11px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:14px}th{background:#f8fafc;color:#475569}
+.small{font-size:12px;color:#64748b}.progress{height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:6px}.bar{height:100%;background:#2563eb;width:0}.rowline{display:flex;justify-content:space-between;gap:12px;margin:8px 0}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:700}.footer-note{font-size:12px;color:#64748b;margin-top:10px}
+.status{font-size:12px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.15)}
+#app{display:none}.authWrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#0f172a,#1d4ed8)}
+.authCard{width:min(440px,100%);background:white;border-radius:22px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.25)}.authCard h1{margin:0 0 8px}.authCard p{color:#64748b}
+.authMsg{min-height:20px;margin-top:10px;font-size:13px}.hidden{display:none!important}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}}@media(max-width:520px){.grid{grid-template-columns:1fr}.wrap{padding:12px}table{display:block;overflow:auto}}
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="authWrap">
+  <div class="authCard">
+    <h1>Controle Financeiro</h1>
+    <p>Entre para sincronizar seus dados entre computador e celular.</p>
+    <div><label>E-mail</label><input type="email" id="loginEmail" autocomplete="email"></div>
+    <div style="margin-top:10px"><label>Senha</label><input type="password" id="loginSenha" autocomplete="current-password"></div>
+    <div class="actions">
+      <button class="btn-primary" id="btnEntrar">Entrar</button>
+      <button class="btn-light" id="btnCriar">Criar conta</button>
+    </div>
+    <div id="authMsg" class="authMsg"></div>
+  </div>
+</div>
+
+<div id="app">
+<div class="wrap">
+<div class="hero">
+  <div class="heroTop">
+    <div><h1>Controle Financeiro + Horas Extras</h1><p id="periodoAtual"></p></div>
+    <div>
+      <div id="syncStatus" class="status">Conectando…</div>
+      <div class="small" style="color:#dbeafe;margin-top:6px" id="userEmail"></div>
+      <button class="btn-light" style="margin-top:8px" id="btnSair">Sair</button>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+<div class="card metric"><div class="label">HE 50%</div><div class="value blue" id="m50">0h</div></div>
+<div class="card metric"><div class="label">HE 100%</div><div class="value blue" id="m100">0h</div></div>
+<div class="card metric"><div class="label">Líquido estimado</div><div class="value" id="mLiquido">R$ 0,00</div></div>
+<div class="card metric"><div class="label">Saldo projetado</div><div class="value" id="mSaldo">R$ 0,00</div></div>
+</div>
+
+<div class="section two">
+<div class="card">
+<h2>Registrar hora extra</h2>
+<div class="three">
+<div><label>Data</label><input type="date" id="heData"></div>
+<div><label>Tipo</label><select id="heTipo"><option value="50">50%</option><option value="100">100%</option></select></div>
+<div><label>Horas</label><input type="number" id="heHoras" min="0" step="0.25" placeholder="Ex.: 1,75"></div>
+</div>
+<div style="margin-top:10px"><label>Observação</label><input id="heObs" placeholder="Opcional"></div>
+<div class="actions"><button class="btn-primary" id="btnAddHE">Adicionar HE</button></div>
+<div id="heLista"></div>
+</div>
+
+<div class="card">
+<h2>Registrar gasto</h2>
+<div class="three">
+<div><label>Data</label><input type="date" id="gData"></div>
+<div><label>Categoria</label><select id="gCat"><option>Gasolina</option><option>Alimentação</option><option>Viagem</option><option>Farmácia</option><option>Lazer</option><option>Outros</option></select></div>
+<div><label>Valor</label><input type="number" id="gValor" min="0" step="0.01" placeholder="0,00"></div>
+</div>
+<div style="margin-top:10px"><label>Descrição</label><input id="gDesc" placeholder="Opcional"></div>
+<div class="actions"><button class="btn-primary" id="btnAddGasto">Adicionar gasto</button></div>
+<div id="gLista"></div>
+</div>
+</div>
+
+<div class="section two">
+<div class="card">
+<h2>Metas de horas</h2>
+<div class="rowline"><span>HE 50%</span><strong id="meta50txt"></strong></div><div class="progress"><div class="bar" id="bar50"></div></div>
+<div class="rowline" style="margin-top:14px"><span>HE 100%</span><strong id="meta100txt"></strong></div><div class="progress"><div class="bar" id="bar100"></div></div>
+<div class="footer-note">Metas configuráveis nas opções abaixo.</div>
+<div style="margin-top:16px;padding:14px;background:#f8fafc;border-radius:12px">
+  <div class="rowline"><span>Faltam HE 50%</span><strong id="falta50"></strong></div>
+  <div class="rowline"><span>Dias necessários (50%)</span><strong id="dias50"></strong></div>
+  <div class="rowline"><span>Faltam HE 100%</span><strong id="falta100"></strong></div>
+  <div class="rowline"><span>Plano HE 100%</span><strong id="dias100"></strong></div>
+  <div class="rowline"><span>Fins de semana restantes</span><strong id="finsSemana"></strong></div>
+  <hr style="border:0;border-top:1px solid #e5e7eb">
+  <div class="rowline"><span>Dias úteis de HE 50% restantes</span><strong id="diasDisponiveis"></strong></div>
+  <div class="small" id="previsaoMeta"></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Resumo financeiro</h2>
+<div class="rowline"><span>Salário base</span><strong id="rBase"></strong></div>
+<div class="rowline"><span>HE bruta</span><strong id="rHE"></strong></div>
+<div class="rowline"><span>Bruto estimado</span><strong id="rBruto"></strong></div>
+<div class="rowline"><span>INSS estimado</span><strong id="rINSS"></strong></div>
+<div class="rowline"><span>Fixos</span><strong id="rFixos"></strong></div>
+<div class="rowline"><span>Variáveis lançados</span><strong id="rVariaveis"></strong></div>
+<hr style="border:0;border-top:1px solid #e5e7eb">
+<div class="rowline"><span><strong>Saldo projetado</strong></span><strong id="rSaldo"></strong></div>
+</div>
+</div>
+
+<div class="section card">
+<h2>Configurações</h2>
+<div class="three">
+<div><label>Salário base</label><input type="number" id="cfgSalario" step="0.01"></div>
+<div><label>Jornada mensal</label><input type="number" id="cfgJornada"></div>
+<div><label>Meta HE 50%</label><input type="number" id="cfgMeta50" step="0.25"></div>
+<div><label>Meta HE 100%</label><input type="number" id="cfgMeta100" step="0.25"></div>
+<div><label>Fixos mensais</label><input type="number" id="cfgFixos" step="0.01"></div>
+<div><label>Dia inicial do fechamento</label><input type="number" id="cfgDia" min="1" max="28"></div>
+<div><label>HE 50% habitual por dia</label><input type="number" id="cfgHorasDia" min="0.25" step="0.25"></div>
+<div><label>Máximo sábado (HE 100%)</label><input type="number" id="cfgSabado100" min="0" step="0.25"></div>
+<div><label>Domingo até</label><select id="cfgDomingoFim"><option value="15">15h (9h possíveis)</option><option value="17">17h (11h possíveis)</option></select></div>
+</div>
+<div class="actions">
+  <button class="btn-dark" id="btnSalvarConfig">Salvar configurações</button>
+  <button class="btn-success" id="btnImportarLocal">Importar dados antigos deste navegador</button>
+</div>
+<div class="footer-note">As alterações são sincronizadas com o Firestore e também ficam disponíveis offline neste dispositivo após o primeiro carregamento.</div>
+</div>
+
+<div class="section card">
+<h2>Histórico de fechamentos</h2>
+<div class="actions"><button class="btn-primary" id="btnFechar">Salvar fechamento atual</button></div>
+<div id="historico"></div>
+</div>
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+  createUserWithEmailAndPassword, signOut
+} from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  doc, collection, setDoc, deleteDoc, onSnapshot, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+/* =========================================================
+   COLE A CONFIGURAÇÃO DO SEU APP WEB DO FIREBASE AQUI
+   Firebase Console > Configurações do projeto > Seus apps > Web
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyAUWXZ7T0wDUoCMO53lNRXVzLO68tMWAck",
+  authDomain: "controle-hr-extra.firebaseapp.com",
+  projectId: "controle-hr-extra",
+  storageBucket: "controle-hr-extra.firebasestorage.app",
+  messagingSenderId: "99291846127",
+  appId: "1:99291846127:web:5370d6a763b8db357a521a",
+  measurementId: "G-ZLK1F9F01B"
+};
+
+const appFirebase = initializeApp(firebaseConfig);
+const firestore = initializeFirestore(appFirebase, {
+  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+});
+const auth = getAuth(appFirebase);
+
+const BRL=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+const DEFAULT_CONFIG={salario:3437.90,jornada:220,meta50:25,meta100:10,fixos:3167,diaInicio:21,horasDia:1.75,sabado100:4,domingoFim:17};
+let currentUser=null, unsubs=[];
+let state={config:{...DEFAULT_CONFIG},hes:[],gastos:[],fechamentos:[]};
+
+const $=id=>document.getElementById(id);
+function uuid(){return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function fmtHorasDecimal(h){h=Math.max(0,Number(h)||0);let horas=Math.floor(h),min=Math.round((h-horas)*60);if(min===60){horas++;min=0}if(horas===0)return `${min}min`;if(min===0)return `${horas}h`;return `${horas}h ${String(min).padStart(2,'0')}min`}
+function parseLocal(s){const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d,12)}
+function fmtData(d){return d.toLocaleDateString('pt-BR')}
+function periodoDaData(data){const di=Number(state.config.diaInicio||21);const d=new Date(data.getFullYear(),data.getMonth(),data.getDate(),12);let inicio,fim;if(d.getDate()>=di){inicio=new Date(d.getFullYear(),d.getMonth(),di,12);fim=new Date(d.getFullYear(),d.getMonth()+1,di-1,12)}else{inicio=new Date(d.getFullYear(),d.getMonth()-1,di,12);fim=new Date(d.getFullYear(),d.getMonth(),di-1,12)}return{inicio,fim}}
+function atualPeriodo(){return periodoDaData(new Date())}
+function dentroPeriodo(s,p){const d=parseLocal(s);return d>=p.inicio&&d<=p.fim}
+function diasPermitidosRestantes(p){const hoje=new Date();hoje.setHours(12,0,0,0);let ini=hoje>p.inicio?new Date(hoje):new Date(p.inicio),total=0;for(let d=new Date(ini);d<=p.fim;d.setDate(d.getDate()+1)){const w=d.getDay();if(w>=1&&w<=4)total++}return total}
+function finsSemanaRestantes(p){const hoje=new Date();hoje.setHours(12,0,0,0);let ini=hoje>p.inicio?new Date(hoje):new Date(p.inicio),sab=0,dom=0;for(let d=new Date(ini);d<=p.fim;d.setDate(d.getDate()+1)){if(d.getDay()===6)sab++;if(d.getDay()===0)dom++}return{sab,dom}}
+function plano100(falta,p){
+  falta=Math.max(0,Number(falta)||0);
+  if(falta<=0)return{texto:'Meta atingida',detalhe:'Você já atingiu a meta de HE 100%.'};
+  const fs=finsSemanaRestantes(p),maxSab=Math.max(0,Number(state.config.sabado100)||4),domHoras=(Number(state.config.domingoFim)||17)-6;
+  if(fs.dom>0&&falta<=domHoras){
+    const fim=6+falta,hh=Math.floor(fim),mm=Math.round((fim-hh)*60);
+    return{texto:`1 domingo: 06:00 às ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`,detalhe:`Dá para completar ${fmtHorasDecimal(falta)} em um único domingo.`};
+  }
+  let restante=falta,partes=[],si=0,di=0;
+  while(restante>0&&(si<fs.sab||di<fs.dom)){
+    if(si<fs.sab&&restante>0){const h=Math.min(maxSab,restante);if(h>0){partes.push(`${fmtHorasDecimal(h)} sábado`);restante-=h}si++}
+    if(di<fs.dom&&restante>0){const h=Math.min(domHoras,restante);if(h>0){partes.push(`${fmtHorasDecimal(h)} domingo`);restante-=h}di++}
+  }
+  return{texto:partes.join(' + ')||'Sem fim de semana disponível',detalhe:restante<=0?`Sugestão para completar ${fmtHorasDecimal(falta)}.`:`Ainda faltariam ${fmtHorasDecimal(restante)}.`};
+}
+function calcINSS(sal){const f=[[1621,0.075],[2902.84,0.09],[4354.27,0.12],[8475.55,0.14]];let t=0,a=0;for(const [l,q] of f){if(sal<=a)break;const b=Math.min(sal,l)-a;if(b>0)t+=b*q;a=l}return t}
+function calc(){const p=atualPeriodo(),hes=state.hes.filter(x=>dentroPeriodo(x.data,p)),gastos=state.gastos.filter(x=>dentroPeriodo(x.data,p)),h50=hes.filter(x=>x.tipo==='50').reduce((a,b)=>a+Number(b.horas),0),h100=hes.filter(x=>x.tipo==='100').reduce((a,b)=>a+Number(b.horas),0),vh=Number(state.config.salario)/Number(state.config.jornada),heBruta=vh*1.5*h50+vh*2*h100,bruto=Number(state.config.salario)+heBruta,inss=calcINSS(bruto),liquido=bruto-inss,variaveis=gastos.reduce((a,b)=>a+Number(b.valor),0),saldo=liquido-Number(state.config.fixos)-variaveis;return{p,hes,gastos,h50,h100,heBruta,bruto,inss,liquido,variaveis,saldo}}
+function render(){
+  const c=calc();
+  $('periodoAtual').textContent=`Fechamento atual: ${fmtData(c.p.inicio)} até ${fmtData(c.p.fim)}`;
+  $('m50').textContent=`${c.h50.toFixed(2).replace('.',',')}h`;$('m100').textContent=`${c.h100.toFixed(2).replace('.',',')}h`;
+  $('mLiquido').textContent=BRL.format(c.liquido);$('mSaldo').textContent=BRL.format(c.saldo);$('mSaldo').className='value '+(c.saldo>=0?'good':'bad');
+  $('rBase').textContent=BRL.format(state.config.salario);$('rHE').textContent=BRL.format(c.heBruta);$('rBruto').textContent=BRL.format(c.bruto);$('rINSS').textContent=BRL.format(c.inss);$('rFixos').textContent=BRL.format(state.config.fixos);$('rVariaveis').textContent=BRL.format(c.variaveis);$('rSaldo').textContent=BRL.format(c.saldo);$('rSaldo').className=c.saldo>=0?'good':'bad';
+  $('bar50').style.width=Math.min(100,(c.h50/state.config.meta50)*100||0)+'%';$('bar100').style.width=Math.min(100,(c.h100/state.config.meta100)*100||0)+'%';
+  $('meta50txt').textContent=`${c.h50.toFixed(1)}h / ${state.config.meta50}h`;$('meta100txt').textContent=`${c.h100.toFixed(1)}h / ${state.config.meta100}h`;
+  const fd=Number(state.config.horasDia)||1.75,f50=Math.max(0,Number(state.config.meta50)-c.h50),f100=Math.max(0,Number(state.config.meta100)-c.h100),d50=Math.ceil(f50/fd),disp=diasPermitidosRestantes(c.p),fs=finsSemanaRestantes(c.p),p100=plano100(f100,c.p);
+  $('falta50').textContent=f50<=0?'Meta atingida':fmtHorasDecimal(f50);$('dias50').textContent=f50<=0?'0 dias':`${d50} dia${d50===1?'':'s'} de ${fmtHorasDecimal(fd)}`;
+  $('falta100').textContent=f100<=0?'Meta atingida':fmtHorasDecimal(f100);$('dias100').textContent=p100.texto;$('finsSemana').textContent=`${fs.sab} sáb. + ${fs.dom} dom.`;$('diasDisponiveis').textContent=`${disp} dia${disp===1?'':'s'} (seg–qui)`;
+  const msg50=f50<=0?'Meta de 50% atingida.':d50<=disp?`HE 50%: faltam ${fmtHorasDecimal(f50)}, equivalentes a ${d50} dia(s) no ritmo de ${fmtHorasDecimal(fd)}.`:`HE 50%: seriam ${d50} dia(s), mas restam apenas ${disp} dias permitidos.`;
+  $('previsaoMeta').textContent=`${msg50} HE 100%: ${p100.detalhe}`;
+  renderHE(c.hes);renderGastos(c.gastos);renderHistorico();
+  $('cfgSalario').value=state.config.salario;$('cfgJornada').value=state.config.jornada;$('cfgMeta50').value=state.config.meta50;$('cfgMeta100').value=state.config.meta100;$('cfgFixos').value=state.config.fixos;$('cfgDia').value=state.config.diaInicio;$('cfgHorasDia').value=state.config.horasDia;$('cfgSabado100').value=state.config.sabado100;$('cfgDomingoFim').value=String(state.config.domingoFim);
+}
+function renderHE(arr){$('heLista').innerHTML=!arr.length?'<p class="small">Nenhuma hora extra neste fechamento.</p>':'<table><tr><th>Data</th><th>Tipo</th><th>Horas</th><th>Obs.</th><th></th></tr>'+arr.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(x=>`<tr><td>${parseLocal(x.data).toLocaleDateString('pt-BR')}</td><td><span class="pill">${x.tipo}%</span></td><td>${fmtHorasDecimal(x.horas)}</td><td>${x.obs||''}</td><td><button class="btn-danger" data-delhe="${x.id}">Excluir</button></td></tr>`).join('')+'</table>'}
+function renderGastos(arr){$('gLista').innerHTML=!arr.length?'<p class="small">Nenhum gasto neste fechamento.</p>':'<table><tr><th>Data</th><th>Categoria</th><th>Valor</th><th>Descrição</th><th></th></tr>'+arr.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(x=>`<tr><td>${parseLocal(x.data).toLocaleDateString('pt-BR')}</td><td>${x.cat}</td><td>${BRL.format(x.valor)}</td><td>${x.desc||''}</td><td><button class="btn-danger" data-delgasto="${x.id}">Excluir</button></td></tr>`).join('')+'</table>'}
+function renderHistorico(){$('historico').innerHTML=!state.fechamentos.length?'<p class="small">Nenhum fechamento salvo ainda.</p>':'<table><tr><th>Período</th><th>HE 50%</th><th>HE 100%</th><th>Líquido</th><th>Saldo</th><th></th></tr>'+state.fechamentos.slice().sort((a,b)=>(b.criadoEm||'').localeCompare(a.criadoEm||'')).map(x=>`<tr><td>${x.periodo}</td><td>${Number(x.h50).toFixed(1)}h</td><td>${Number(x.h100).toFixed(1)}h</td><td>${BRL.format(x.liquido)}</td><td class="${x.saldo>=0?'good':'bad'}">${BRL.format(x.saldo)}</td><td><button class="btn-danger" data-delfech="${x.id}">Excluir</button></td></tr>`).join('')+'</table>'}
+
+function paths(uid){
+  return{
+    config:doc(firestore,'users',uid,'config','main'),
+    horas:collection(firestore,'users',uid,'horas'),
+    gastos:collection(firestore,'users',uid,'gastos'),
+    fechamentos:collection(firestore,'users',uid,'fechamentos')
+  }
+}
+function clearListeners(){unsubs.forEach(fn=>fn());unsubs=[]}
+function startSync(user){
+  clearListeners();const p=paths(user.uid);$('syncStatus').textContent='Sincronizando…';
+  unsubs.push(onSnapshot(p.config,async snap=>{
+    if(snap.exists())state.config={...DEFAULT_CONFIG,...snap.data()};
+    else await setDoc(p.config,{...DEFAULT_CONFIG,updatedAt:serverTimestamp()});
+    render();
+  }));
+  unsubs.push(onSnapshot(p.horas,s=>{state.hes=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+  unsubs.push(onSnapshot(p.gastos,s=>{state.gastos=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+  unsubs.push(onSnapshot(p.fechamentos,s=>{state.fechamentos=s.docs.map(d=>({id:d.id,...d.data()}));render();$('syncStatus').textContent='✓ Sincronizado'}));
+}
+
+$('btnEntrar').onclick=async()=>{try{$('authMsg').textContent='Entrando…';await signInWithEmailAndPassword(auth,$('loginEmail').value.trim(),$('loginSenha').value);$('authMsg').textContent=''}catch(e){$('authMsg').textContent='Não foi possível entrar. Confira e-mail e senha.'}}
+$('btnCriar').onclick=async()=>{try{$('authMsg').textContent='Criando conta…';await createUserWithEmailAndPassword(auth,$('loginEmail').value.trim(),$('loginSenha').value);$('authMsg').textContent=''}catch(e){$('authMsg').textContent='Não foi possível criar a conta. Use uma senha válida e um e-mail correto.'}}
+$('btnSair').onclick=()=>signOut(auth);
+
+onAuthStateChanged(auth,user=>{
+  currentUser=user;
+  if(user){$('authScreen').classList.add('hidden');$('app').style.display='block';$('userEmail').textContent=user.email||'';startSync(user)}
+  else{clearListeners();$('app').style.display='none';$('authScreen').classList.remove('hidden')}
+});
+
+$('btnAddHE').onclick=async()=>{
+  if(!currentUser)return;const data=$('heData').value,tipo=$('heTipo').value,horas=Number($('heHoras').value),obs=$('heObs').value.trim();if(!data||!horas||horas<=0)return alert('Preencha data e horas.');
+  const id=uuid();await setDoc(doc(paths(currentUser.uid).horas,id),{data,tipo,horas,obs,createdAt:new Date().toISOString()});$('heHoras').value='';$('heObs').value=''
+};
+$('btnAddGasto').onclick=async()=>{
+  if(!currentUser)return;const data=$('gData').value,cat=$('gCat').value,valor=Number($('gValor').value),desc=$('gDesc').value.trim();if(!data||!valor||valor<=0)return alert('Preencha data e valor.');
+  const id=uuid();await setDoc(doc(paths(currentUser.uid).gastos,id),{data,cat,valor,desc,createdAt:new Date().toISOString()});$('gValor').value='';$('gDesc').value=''
+};
+document.addEventListener('click',async e=>{
+  if(!currentUser)return;
+  const a=e.target.closest('[data-delhe]'),b=e.target.closest('[data-delgasto]'),c=e.target.closest('[data-delfech]');
+  if(a)await deleteDoc(doc(paths(currentUser.uid).horas,a.dataset.delhe));
+  if(b)await deleteDoc(doc(paths(currentUser.uid).gastos,b.dataset.delgasto));
+  if(c)await deleteDoc(doc(paths(currentUser.uid).fechamentos,c.dataset.delfech));
+});
+$('btnSalvarConfig').onclick=async()=>{
+  if(!currentUser)return;
+  const cfg={salario:Number($('cfgSalario').value)||3437.90,jornada:Number($('cfgJornada').value)||220,meta50:Number($('cfgMeta50').value)||25,meta100:Number($('cfgMeta100').value)||10,fixos:Number($('cfgFixos').value)||0,diaInicio:Math.min(28,Math.max(1,Number($('cfgDia').value)||21)),horasDia:Math.max(.25,Number($('cfgHorasDia').value)||1.75),sabado100:Math.max(0,Number($('cfgSabado100').value)||4),domingoFim:[15,17].includes(Number($('cfgDomingoFim').value))?Number($('cfgDomingoFim').value):17,updatedAt:serverTimestamp()};
+  await setDoc(paths(currentUser.uid).config,cfg,{merge:true});alert('Configurações salvas na nuvem.')
+};
+$('btnFechar').onclick=async()=>{
+  if(!currentUser)return;const c=calc(),id=uuid(),periodo=`${fmtData(c.p.inicio)} a ${fmtData(c.p.fim)}`;
+  await setDoc(doc(paths(currentUser.uid).fechamentos,id),{periodo,h50:c.h50,h100:c.h100,liquido:c.liquido,saldo:c.saldo,heBruta:c.heBruta,inss:c.inss,variaveis:c.variaveis,criadoEm:new Date().toISOString()});alert('Fechamento salvo na nuvem.')
+};
+
+$('btnImportarLocal').onclick=async()=>{
+  if(!currentUser)return;
+  const raw=localStorage.getItem('controle_financeiro_he_v1');
+  if(!raw)return alert('Não encontrei dados antigos neste navegador.');
+  if(!confirm('Importar os dados antigos deste navegador para sua conta Firebase?'))return;
+  try{
+    const old=JSON.parse(raw),p=paths(currentUser.uid);
+    if(old.config)await setDoc(p.config,{...DEFAULT_CONFIG,...old.config,updatedAt:serverTimestamp()},{merge:true});
+    for(const x of old.hes||[]){const id=String(x.id||uuid());await setDoc(doc(p.horas,id),x,{merge:true})}
+    for(const x of old.gastos||[]){const id=String(x.id||uuid());await setDoc(doc(p.gastos,id),x,{merge:true})}
+    for(const x of old.fechamentos||[]){const id=String(x.id||uuid());await setDoc(doc(p.fechamentos,id),{...x,criadoEm:x.criadoEm||new Date().toISOString()},{merge:true})}
+    alert('Dados antigos importados para o Firebase.');
+  }catch(e){console.error(e);alert('Não foi possível importar os dados antigos.')}
+};
+
+const hoje=new Date(),hojeIso=new Date(hoje.getTime()-hoje.getTimezoneOffset()*60000).toISOString().slice(0,10);$('heData').value=hojeIso;$('gData').value=hojeIso;
+</script>
+</body>
+</html>
