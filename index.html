@@ -20,6 +20,12 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
 #app{display:none}.authWrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#0f172a,#1d4ed8)}
 .authCard{width:min(440px,100%);background:white;border-radius:22px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.25)}.authCard h1{margin:0 0 8px}.authCard p{color:#64748b}
 .authMsg{min-height:20px;margin-top:10px;font-size:13px}.hidden{display:none!important}
+.paywall{min-height:100vh;display:none;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#0f172a,#1d4ed8)}
+.payCard{width:min(520px,100%);background:#fff;border-radius:22px;padding:26px;box-shadow:0 20px 50px rgba(0,0,0,.25);text-align:center}
+.payCard h1{margin:0 0 8px}.adminWrap{display:none;max-width:1350px;margin:auto;padding:24px}.adminTop{background:linear-gradient(135deg,#111827,#7c3aed);color:#fff;padding:22px;border-radius:20px;margin-bottom:18px}
+.adminStats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.adminTableWrap{overflow:auto}.tag{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800}
+.tag-trial{background:#dbeafe;color:#1d4ed8}.tag-active{background:#dcfce7;color:#15803d}.tag-frozen{background:#fef3c7;color:#92400e}.tag-cancelled{background:#fee2e2;color:#b91c1c}
+@media(max-width:800px){.adminStats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}}@media(max-width:520px){.grid{grid-template-columns:1fr}.wrap{padding:12px}table{display:block;overflow:auto}}
 </style>
 </head>
@@ -45,6 +51,39 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
       Entrar com Google
     </button>
     <div id="authMsg" class="authMsg"></div>
+    <button id="btnAdminMode" class="btn-dark" style="width:100%;margin-top:14px">Área administrativa</button>
+    <div id="adminHint" class="small" style="margin-top:8px;display:none">Use seu usuário administrativo.</div>
+  </div>
+</div>
+
+<div id="paywall" class="paywall">
+  <div class="payCard">
+    <h1 id="payTitle">Acesso indisponível</h1>
+    <p id="payText">Seu período de teste terminou.</p>
+    <div id="payInfo" style="margin:18px 0;padding:14px;border-radius:12px;background:#f8fafc"></div>
+    <button id="btnPaySair" class="btn-light">Sair da conta</button>
+  </div>
+</div>
+
+<div id="adminPanel" class="adminWrap">
+  <div class="adminTop">
+    <div class="heroTop">
+      <div><h1 style="margin:0">Administração</h1><p style="margin:6px 0 0">Controle de testes, assinaturas, congelamentos e cancelamentos.</p></div>
+      <div><div id="adminEmail" class="small" style="color:#ede9fe"></div><button id="btnAdminSair" class="btn-light" style="margin-top:8px">Sair</button></div>
+    </div>
+  </div>
+  <div class="adminStats">
+    <div class="card metric"><div class="label">Usuários</div><div class="value" id="aTotal">0</div></div>
+    <div class="card metric"><div class="label">Em teste</div><div class="value blue" id="aTrial">0</div></div>
+    <div class="card metric"><div class="label">Ativos</div><div class="value good" id="aActive">0</div></div>
+    <div class="card metric"><div class="label">Bloqueados</div><div class="value bad" id="aBlocked">0</div></div>
+  </div>
+  <div class="section card">
+    <div class="heroTop">
+      <div><h2 style="margin:0">Usuários</h2><div class="small">Os 7 dias começam no primeiro acesso.</div></div>
+      <input id="adminSearch" placeholder="Buscar por e-mail ou nome" style="max-width:340px">
+    </div>
+    <div id="adminUsers" class="adminTableWrap"></div>
   </div>
 </div>
 
@@ -162,7 +201,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, collection, setDoc, deleteDoc, onSnapshot, getDocs, serverTimestamp
+  doc, collection, setDoc, deleteDoc, onSnapshot, getDocs, getDoc, updateDoc,
+  serverTimestamp, Timestamp, runTransaction
 } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 
 /* =========================================================
@@ -200,8 +240,13 @@ const DEFAULT_CONFIG={
   domingoFim:0,
   configurado:false
 };
-let currentUser=null, unsubs=[];
+let currentUser=null, unsubs=[], accessUnsub=null, adminUnsub=null, isAdminUser=false, adminMode=false;
 let state={config:{...DEFAULT_CONFIG},hes:[],gastos:[],fechamentos:[]};
+let currentAccess=null, adminUsersCache=[];
+
+const ADMIN_LOGIN='Castelhano04';
+const ADMIN_INTERNAL_EMAIL='castelhano04@controle.local';
+const OWNER_GOOGLE_EMAIL='andersoncastelhano2018@gmail.com';
 
 const $=id=>document.getElementById(id);
 function uuid(){return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2)}
@@ -297,9 +342,157 @@ function paths(uid){
     config:doc(firestore,'users',uid,'config','main'),
     horas:collection(firestore,'users',uid,'horas'),
     gastos:collection(firestore,'users',uid,'gastos'),
-    fechamentos:collection(firestore,'users',uid,'fechamentos')
+    fechamentos:collection(firestore,'users',uid,'fechamentos'),
+    access:doc(firestore,'access',uid),
+    admin:doc(firestore,'admins',uid)
   }
 }
+
+function addDays(date,days){const d=new Date(date);d.setDate(d.getDate()+days);return d}
+function toDate(v){if(!v)return null;if(v.toDate)return v.toDate();if(v instanceof Date)return v;return new Date(v)}
+function fmtDateTime(v){const d=toDate(v);return d&&!isNaN(d)?d.toLocaleString('pt-BR'):'—'}
+
+async function ensureAccessDoc(user){
+  if(isOwnerGoogle(user)) return;
+  const ref=paths(user.uid).access;
+  const snap=await getDoc(ref);
+  if(snap.exists()) return;
+
+  const now=new Date();
+  const trialEnd=addDays(now,7);
+  await setDoc(ref,{
+    uid:user.uid,
+    email:user.email||'',
+    nome:user.displayName||'',
+    photoURL:user.photoURL||'',
+    status:'trial',
+    createdAt:serverTimestamp(),
+    trialEndsAt:Timestamp.fromDate(trialEnd),
+    paidUntil:null,
+    frozenAt:null,
+    cancelledAt:null,
+    updatedAt:serverTimestamp()
+  });
+}
+
+function isOwnerGoogle(user){
+  return !!user && String(user.email||'').toLowerCase()===OWNER_GOOGLE_EMAIL.toLowerCase();
+}
+
+async function checkAdmin(user){
+  const snap=await getDoc(paths(user.uid).admin);
+  return snap.exists() && snap.data().active===true;
+}
+
+function hasUserAccess(a){
+  if(isOwnerGoogle(currentUser))return true;
+  if(!a)return false;
+  const now=Date.now();
+  if(a.status==='active'){
+    const paid=toDate(a.paidUntil);
+    return !paid || paid.getTime()>now;
+  }
+  if(a.status==='trial'){
+    const end=toDate(a.trialEndsAt);
+    return !!end && end.getTime()>now;
+  }
+  return false;
+}
+
+function showPaywall(a){
+  $('app').style.display='none';
+  $('adminPanel').style.display='none';
+  $('paywall').style.display='flex';
+  const status=a?.status||'unknown';
+  if(status==='frozen'){
+    $('payTitle').textContent='Assinatura congelada';
+    $('payText').textContent='Seu acesso está temporariamente congelado.';
+  }else if(status==='cancelled'){
+    $('payTitle').textContent='Assinatura cancelada';
+    $('payText').textContent='Seu acesso foi cancelado.';
+  }else{
+    $('payTitle').textContent='Seu teste grátis terminou';
+    $('payText').textContent='O período de 7 dias acabou. Para continuar, será necessário ativar uma assinatura.';
+  }
+  $('payInfo').innerHTML=`Status: <strong>${status}</strong><br>Fim do teste: <strong>${fmtDateTime(a?.trialEndsAt)}</strong>`;
+}
+
+function startAccessWatch(user){
+  if(accessUnsub)accessUnsub();
+  accessUnsub=onSnapshot(paths(user.uid).access,snap=>{
+    currentAccess=snap.exists()?snap.data():null;
+    if(isAdminUser)return;
+    if(hasUserAccess(currentAccess)){
+      $('paywall').style.display='none';
+      $('adminPanel').style.display='none';
+      $('app').style.display='block';
+      startSync(user);
+    }else{
+      clearListeners();
+      showPaywall(currentAccess);
+    }
+  });
+}
+
+function statusTag(s){
+  const cls={trial:'tag-trial',active:'tag-active',frozen:'tag-frozen',cancelled:'tag-cancelled'}[s]||'tag-cancelled';
+  const name={trial:'Teste',active:'Ativo',frozen:'Congelado',cancelled:'Cancelado'}[s]||s;
+  return `<span class="tag ${cls}">${name}</span>`;
+}
+function renderAdminUsers(){
+  const q=$('adminSearch').value.trim().toLowerCase();
+  const list=adminUsersCache.filter(u=>!q||String(u.email||'').toLowerCase().includes(q)||String(u.nome||'').toLowerCase().includes(q));
+  $('aTotal').textContent=adminUsersCache.length;
+  $('aTrial').textContent=adminUsersCache.filter(x=>x.status==='trial'&&hasUserAccess(x)).length;
+  $('aActive').textContent=adminUsersCache.filter(x=>x.status==='active'&&hasUserAccess(x)).length;
+  $('aBlocked').textContent=adminUsersCache.filter(x=>!hasUserAccess(x)).length;
+  if(!list.length){$('adminUsers').innerHTML='<p class="small">Nenhum usuário encontrado.</p>';return}
+  $('adminUsers').innerHTML=`<table><tr><th>Usuário</th><th>Status</th><th>Teste até</th><th>Pago até</th><th>Ações</th></tr>`+
+    list.map(u=>`<tr>
+      <td><strong>${u.nome||'Sem nome'}</strong><br><span class="small">${u.email||u.uid}</span></td>
+      <td>${statusTag(u.status)}</td>
+      <td>${fmtDateTime(u.trialEndsAt)}</td>
+      <td>${fmtDateTime(u.paidUntil)}</td>
+      <td>
+        <div class="actions" style="margin:0">
+          <button class="btn-success" data-admin-action="activate" data-uid="${u.uid}">+30 dias</button>
+          <button class="btn-primary" data-admin-action="trial7" data-uid="${u.uid}">+7 teste</button>
+          <button class="btn-light" data-admin-action="freeze" data-uid="${u.uid}">Congelar</button>
+          <button class="btn-danger" data-admin-action="cancel" data-uid="${u.uid}">Cancelar</button>
+        </div>
+      </td>
+    </tr>`).join('')+`</table>`;
+}
+function startAdminPanel(user){
+  clearListeners();
+  if(accessUnsub){accessUnsub();accessUnsub=null}
+  $('app').style.display='none';$('paywall').style.display='none';$('adminPanel').style.display='block';
+  $('adminEmail').textContent=isOwnerGoogle(user)?`Proprietário: ${user.email}`:`Administrador: ${ADMIN_LOGIN}`;
+  if(adminUnsub)adminUnsub();
+  adminUnsub=onSnapshot(collection(firestore,'access'),snap=>{
+    adminUsersCache=snap.docs.map(d=>({uid:d.id,...d.data()}));
+    renderAdminUsers();
+  },e=>{console.error(e);$('adminUsers').innerHTML='<p class="bad">Não foi possível carregar os usuários. Confira as regras do Firestore.</p>'});
+}
+async function adminAction(uid,action){
+  if(!isAdminUser)return;
+  const ref=doc(firestore,'access',uid), snap=await getDoc(ref);
+  if(!snap.exists())return;
+  const now=new Date();
+  if(action==='activate'){
+    const current=toDate(snap.data().paidUntil);
+    const base=current&&current>now?current:now;
+    await updateDoc(ref,{status:'active',paidUntil:Timestamp.fromDate(addDays(base,30)),frozenAt:null,cancelledAt:null,updatedAt:serverTimestamp()});
+  }
+  if(action==='trial7'){
+    const current=toDate(snap.data().trialEndsAt);
+    const base=current&&current>now?current:now;
+    await updateDoc(ref,{status:'trial',trialEndsAt:Timestamp.fromDate(addDays(base,7)),frozenAt:null,cancelledAt:null,updatedAt:serverTimestamp()});
+  }
+  if(action==='freeze')await updateDoc(ref,{status:'frozen',frozenAt:serverTimestamp(),updatedAt:serverTimestamp()});
+  if(action==='cancel')await updateDoc(ref,{status:'cancelled',cancelledAt:serverTimestamp(),updatedAt:serverTimestamp()});
+}
+
 function clearListeners(){unsubs.forEach(fn=>fn());unsubs=[]}
 function startSync(user){
   clearListeners();const p=paths(user.uid);$('syncStatus').textContent='Sincronizando…';
@@ -336,9 +529,10 @@ function mensagemAuth(e){
 }
 
 $('btnEntrar').onclick=async()=>{
-  const email=$('loginEmail').value.trim();
+  const loginDigitado=$('loginEmail').value.trim();
+  const email=adminMode && loginDigitado===ADMIN_LOGIN ? ADMIN_INTERNAL_EMAIL : loginDigitado;
   const senha=$('loginSenha').value;
-  if(!email){$('authMsg').textContent='Digite seu e-mail.';return;}
+  if(!email){$('authMsg').textContent=adminMode?'Digite o usuário administrativo.':'Digite seu e-mail.';return;}
   if(!senha){$('authMsg').textContent='Digite sua senha.';return;}
   try{
     $('authMsg').textContent='Entrando…';
@@ -395,22 +589,68 @@ getRedirectResult(auth).catch(e=>{
   $('authMsg').textContent=mensagemAuth(e);
 });
 
+
+$('btnAdminMode').onclick=()=>{
+  adminMode=!adminMode;
+  $('adminHint').style.display=adminMode?'block':'none';
+  $('btnAdminMode').textContent=adminMode?'Voltar ao login normal':'Área administrativa';
+  $('loginEmail').value='';
+  $('loginSenha').value='';
+  $('loginEmail').type=adminMode?'text':'email';
+  $('loginEmail').placeholder=adminMode?'Castelhano04':'';
+  $('authMsg').textContent=adminMode?'Digite Castelhano04 e sua senha administrativa.':'';
+};
+$('btnPaySair').onclick=()=>signOut(auth);
+$('btnAdminSair').onclick=()=>signOut(auth);
+$('adminSearch').addEventListener('input',renderAdminUsers);
+document.addEventListener('click',async e=>{
+  const btn=e.target.closest('[data-admin-action]');
+  if(btn){
+    btn.disabled=true;
+    try{await adminAction(btn.dataset.uid,btn.dataset.adminAction)}
+    finally{btn.disabled=false}
+  }
+});
+
 $('btnSair').onclick=()=>signOut(auth);
 
-onAuthStateChanged(auth,user=>{
+onAuthStateChanged(auth,async user=>{
   clearListeners();
+  if(accessUnsub){accessUnsub();accessUnsub=null}
+  if(adminUnsub){adminUnsub();adminUnsub=null}
   state={config:{...DEFAULT_CONFIG},hes:[],gastos:[],fechamentos:[]};
-  currentUser=user;
-  if(user){
-    $('authScreen').classList.add('hidden');
-    $('app').style.display='block';
-    $('userEmail').textContent=user.email||user.displayName||'Conta Google';
-    render();
-    startSync(user);
-  }else{
-    $('app').style.display='none';
+  currentUser=user;currentAccess=null;isAdminUser=false;
+  $('app').style.display='none';$('adminPanel').style.display='none';$('paywall').style.display='none';
+
+  if(!user){
     $('authScreen').classList.remove('hidden');
+    adminMode=false;
+    $('adminHint').style.display='none';
+    $('loginEmail').type='email';
+    $('loginEmail').placeholder='';
+    return;
   }
+
+  $('authScreen').classList.add('hidden');
+  const owner=isOwnerGoogle(user);
+  isAdminUser=owner ? true : await checkAdmin(user);
+
+  if(owner){
+    // Conta proprietária: sem teste, sem cobrança e com acesso administrativo total.
+    $('userEmail').textContent=user.email||user.displayName||'Conta proprietária';
+    startAdminPanel(user);
+    return;
+  }
+
+  if(isAdminUser){
+    startAdminPanel(user);
+    return;
+  }
+
+  await ensureAccessDoc(user);
+  $('userEmail').textContent=user.email||user.displayName||'Conta Google';
+  render();
+  startAccessWatch(user);
 });
 
 $('btnAddHE').onclick=async()=>{
