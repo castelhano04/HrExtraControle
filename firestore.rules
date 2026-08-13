@@ -1,0 +1,81 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return signedIn()
+        && request.auth.token.email == 'andersoncastelhano2018@gmail.com';
+    }
+
+    function isAdmin() {
+      return isOwner()
+        || (
+          signedIn()
+          && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true
+        );
+    }
+
+    function own(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function accessData(uid) {
+      return get(/databases/$(database)/documents/access/$(uid)).data;
+    }
+
+    function hasValidAccess(uid) {
+      return isAdmin()
+        || (
+          own(uid)
+          && exists(/databases/$(database)/documents/access/$(uid))
+          && (
+            (
+              accessData(uid).status == 'trial'
+              && accessData(uid).trialEndsAt > request.time
+            )
+            ||
+            (
+              accessData(uid).status == 'active'
+              && (
+                accessData(uid).paidUntil == null
+                || accessData(uid).paidUntil > request.time
+              )
+            )
+          )
+        );
+    }
+
+    match /admins/{uid} {
+      allow read: if isOwner() || own(uid);
+      allow write: if false;
+    }
+
+    match /access/{uid} {
+      allow read: if own(uid) || isAdmin();
+
+      allow create: if own(uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'trial'
+        && request.resource.data.paidUntil == null
+        && request.resource.data.trialEndsAt > request.time
+        && request.resource.data.trialEndsAt <= request.time + duration.value(7, 'd');
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /users/{uid}/{document=**} {
+      allow read, write: if hasValidAccess(uid);
+    }
+
+    // Controle antifraude é exclusivamente do backend/Admin SDK.
+    match /devices/{deviceId} {
+      allow read, write: if false;
+    }
+  }
+}
