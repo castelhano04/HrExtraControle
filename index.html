@@ -136,7 +136,7 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
 <div><label>Dia inicial do fechamento</label><input type="number" id="cfgDia" min="1" max="28"></div>
 <div><label>HE 50% habitual por dia</label><input type="number" id="cfgHorasDia" min="0.25" step="0.25"></div>
 <div><label>Máximo sábado (HE 100%)</label><input type="number" id="cfgSabado100" min="0" step="0.25"></div>
-<div><label>Domingo até</label><select id="cfgDomingoFim"><option value="15">15h (9h possíveis)</option><option value="17">17h (11h possíveis)</option></select></div>
+<div><label>Domingo até</label><select id="cfgDomingoFim"><option value="">Selecione</option><option value="15">15h (9h possíveis)</option><option value="17">17h (11h possíveis)</option></select></div>
 </div>
 <div class="actions">
   <button class="btn-dark" id="btnSalvarConfig">Salvar configurações</button>
@@ -188,7 +188,18 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 const BRL=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
-const DEFAULT_CONFIG={salario:3437.90,jornada:220,meta50:25,meta100:10,fixos:3167,diaInicio:21,horasDia:1.75,sabado100:4,domingoFim:17};
+const DEFAULT_CONFIG={
+  salario:0,
+  jornada:0,
+  meta50:0,
+  meta100:0,
+  fixos:0,
+  diaInicio:0,
+  horasDia:0,
+  sabado100:0,
+  domingoFim:0,
+  configurado:false
+};
 let currentUser=null, unsubs=[];
 let state={config:{...DEFAULT_CONFIG},hes:[],gastos:[],fechamentos:[]};
 
@@ -218,22 +229,64 @@ function plano100(falta,p){
   return{texto:partes.join(' + ')||'Sem fim de semana disponível',detalhe:restante<=0?`Sugestão para completar ${fmtHorasDecimal(falta)}.`:`Ainda faltariam ${fmtHorasDecimal(restante)}.`};
 }
 function calcINSS(sal){const f=[[1621,0.075],[2902.84,0.09],[4354.27,0.12],[8475.55,0.14]];let t=0,a=0;for(const [l,q] of f){if(sal<=a)break;const b=Math.min(sal,l)-a;if(b>0)t+=b*q;a=l}return t}
-function calc(){const p=atualPeriodo(),hes=state.hes.filter(x=>dentroPeriodo(x.data,p)),gastos=state.gastos.filter(x=>dentroPeriodo(x.data,p)),h50=hes.filter(x=>x.tipo==='50').reduce((a,b)=>a+Number(b.horas),0),h100=hes.filter(x=>x.tipo==='100').reduce((a,b)=>a+Number(b.horas),0),vh=Number(state.config.salario)/Number(state.config.jornada),heBruta=vh*1.5*h50+vh*2*h100,bruto=Number(state.config.salario)+heBruta,inss=calcINSS(bruto),liquido=bruto-inss,variaveis=gastos.reduce((a,b)=>a+Number(b.valor),0),saldo=liquido-Number(state.config.fixos)-variaveis;return{p,hes,gastos,h50,h100,heBruta,bruto,inss,liquido,variaveis,saldo}}
+function calc(){
+  const p=atualPeriodo(),
+        hes=state.hes.filter(x=>dentroPeriodo(x.data,p)),
+        gastos=state.gastos.filter(x=>dentroPeriodo(x.data,p)),
+        h50=hes.filter(x=>x.tipo==='50').reduce((a,b)=>a+Number(b.horas),0),
+        h100=hes.filter(x=>x.tipo==='100').reduce((a,b)=>a+Number(b.horas),0),
+        salario=Number(state.config.salario)||0,
+        jornada=Number(state.config.jornada)||0,
+        vh=jornada>0 ? salario/jornada : 0,
+        heBruta=vh*1.5*h50+vh*2*h100,
+        bruto=salario+heBruta,
+        inss=bruto>0 ? calcINSS(bruto) : 0,
+        liquido=bruto-inss,
+        variaveis=gastos.reduce((a,b)=>a+Number(b.valor),0),
+        saldo=liquido-(Number(state.config.fixos)||0)-variaveis;
+  return{p,hes,gastos,h50,h100,heBruta,bruto,inss,liquido,variaveis,saldo}
+}
 function render(){
   const c=calc();
   $('periodoAtual').textContent=`Fechamento atual: ${fmtData(c.p.inicio)} até ${fmtData(c.p.fim)}`;
   $('m50').textContent=`${c.h50.toFixed(2).replace('.',',')}h`;$('m100').textContent=`${c.h100.toFixed(2).replace('.',',')}h`;
   $('mLiquido').textContent=BRL.format(c.liquido);$('mSaldo').textContent=BRL.format(c.saldo);$('mSaldo').className='value '+(c.saldo>=0?'good':'bad');
   $('rBase').textContent=BRL.format(state.config.salario);$('rHE').textContent=BRL.format(c.heBruta);$('rBruto').textContent=BRL.format(c.bruto);$('rINSS').textContent=BRL.format(c.inss);$('rFixos').textContent=BRL.format(state.config.fixos);$('rVariaveis').textContent=BRL.format(c.variaveis);$('rSaldo').textContent=BRL.format(c.saldo);$('rSaldo').className=c.saldo>=0?'good':'bad';
-  $('bar50').style.width=Math.min(100,(c.h50/state.config.meta50)*100||0)+'%';$('bar100').style.width=Math.min(100,(c.h100/state.config.meta100)*100||0)+'%';
-  $('meta50txt').textContent=`${c.h50.toFixed(1)}h / ${state.config.meta50}h`;$('meta100txt').textContent=`${c.h100.toFixed(1)}h / ${state.config.meta100}h`;
-  const fd=Number(state.config.horasDia)||1.75,f50=Math.max(0,Number(state.config.meta50)-c.h50),f100=Math.max(0,Number(state.config.meta100)-c.h100),d50=Math.ceil(f50/fd),disp=diasPermitidosRestantes(c.p),fs=finsSemanaRestantes(c.p),p100=plano100(f100,c.p);
-  $('falta50').textContent=f50<=0?'Meta atingida':fmtHorasDecimal(f50);$('dias50').textContent=f50<=0?'0 dias':`${d50} dia${d50===1?'':'s'} de ${fmtHorasDecimal(fd)}`;
-  $('falta100').textContent=f100<=0?'Meta atingida':fmtHorasDecimal(f100);$('dias100').textContent=p100.texto;$('finsSemana').textContent=`${fs.sab} sáb. + ${fs.dom} dom.`;$('diasDisponiveis').textContent=`${disp} dia${disp===1?'':'s'} (seg–qui)`;
-  const msg50=f50<=0?'Meta de 50% atingida.':d50<=disp?`HE 50%: faltam ${fmtHorasDecimal(f50)}, equivalentes a ${d50} dia(s) no ritmo de ${fmtHorasDecimal(fd)}.`:`HE 50%: seriam ${d50} dia(s), mas restam apenas ${disp} dias permitidos.`;
+  const meta50=Number(state.config.meta50)||0, meta100=Number(state.config.meta100)||0;
+  $('bar50').style.width=meta50>0?Math.min(100,(c.h50/meta50)*100)+'%':'0%';
+  $('bar100').style.width=meta100>0?Math.min(100,(c.h100/meta100)*100)+'%':'0%';
+  $('meta50txt').textContent=meta50>0?`${c.h50.toFixed(1)}h / ${meta50}h`:`${c.h50.toFixed(1)}h / meta não definida`;
+  $('meta100txt').textContent=meta100>0?`${c.h100.toFixed(1)}h / ${meta100}h`:`${c.h100.toFixed(1)}h / meta não definida`;
+  const fd=Number(state.config.horasDia)||0,
+        f50=meta50>0?Math.max(0,meta50-c.h50):0,
+        f100=meta100>0?Math.max(0,meta100-c.h100):0,
+        d50=(fd>0&&f50>0)?Math.ceil(f50/fd):0,
+        disp=diasPermitidosRestantes(c.p),
+        fs=finsSemanaRestantes(c.p),
+        p100=meta100>0?plano100(f100,c.p):{texto:'Defina uma meta',detalhe:'Configure a meta de HE 100%.'};
+  $('falta50').textContent=meta50<=0?'Defina uma meta':(f50<=0?'Meta atingida':fmtHorasDecimal(f50));
+  $('dias50').textContent=meta50<=0?'—':(f50<=0?'0 dias':(fd>0?`${d50} dia${d50===1?'':'s'} de ${fmtHorasDecimal(fd)}`:'Defina as horas habituais por dia'));
+  $('falta100').textContent=meta100<=0?'Defina uma meta':(f100<=0?'Meta atingida':fmtHorasDecimal(f100));
+  $('dias100').textContent=p100.texto;
+  $('finsSemana').textContent=`${fs.sab} sáb. + ${fs.dom} dom.`;
+  $('diasDisponiveis').textContent=`${disp} dia${disp===1?'':'s'} (seg–qui)`;
+  let msg50='Configure suas metas para ver a previsão.';
+  if(meta50>0){
+    if(f50<=0) msg50='Meta de 50% atingida.';
+    else if(fd<=0) msg50=`HE 50%: faltam ${fmtHorasDecimal(f50)}. Defina sua HE habitual por dia para calcular quantos dias faltam.`;
+    else msg50=d50<=disp?`HE 50%: faltam ${fmtHorasDecimal(f50)}, equivalentes a ${d50} dia(s) no ritmo de ${fmtHorasDecimal(fd)}.`:`HE 50%: seriam ${d50} dia(s), mas restam apenas ${disp} dias permitidos.`;
+  }
   $('previsaoMeta').textContent=`${msg50} HE 100%: ${p100.detalhe}`;
   renderHE(c.hes);renderGastos(c.gastos);renderHistorico();
-  $('cfgSalario').value=state.config.salario;$('cfgJornada').value=state.config.jornada;$('cfgMeta50').value=state.config.meta50;$('cfgMeta100').value=state.config.meta100;$('cfgFixos').value=state.config.fixos;$('cfgDia').value=state.config.diaInicio;$('cfgHorasDia').value=state.config.horasDia;$('cfgSabado100').value=state.config.sabado100;$('cfgDomingoFim').value=String(state.config.domingoFim);
+  $('cfgSalario').value=state.config.salario||'';
+  $('cfgJornada').value=state.config.jornada||'';
+  $('cfgMeta50').value=state.config.meta50||'';
+  $('cfgMeta100').value=state.config.meta100||'';
+  $('cfgFixos').value=state.config.fixos||'';
+  $('cfgDia').value=state.config.diaInicio||'';
+  $('cfgHorasDia').value=state.config.horasDia||'';
+  $('cfgSabado100').value=state.config.sabado100||'';
+  $('cfgDomingoFim').value=state.config.domingoFim?String(state.config.domingoFim):'';
 }
 function renderHE(arr){$('heLista').innerHTML=!arr.length?'<p class="small">Nenhuma hora extra neste fechamento.</p>':'<table><tr><th>Data</th><th>Tipo</th><th>Horas</th><th>Obs.</th><th></th></tr>'+arr.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(x=>`<tr><td>${parseLocal(x.data).toLocaleDateString('pt-BR')}</td><td><span class="pill">${x.tipo}%</span></td><td>${fmtHorasDecimal(x.horas)}</td><td>${x.obs||''}</td><td><button class="btn-danger" data-delhe="${x.id}">Excluir</button></td></tr>`).join('')+'</table>'}
 function renderGastos(arr){$('gLista').innerHTML=!arr.length?'<p class="small">Nenhum gasto neste fechamento.</p>':'<table><tr><th>Data</th><th>Categoria</th><th>Valor</th><th>Descrição</th><th></th></tr>'+arr.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(x=>`<tr><td>${parseLocal(x.data).toLocaleDateString('pt-BR')}</td><td>${x.cat}</td><td>${BRL.format(x.valor)}</td><td>${x.desc||''}</td><td><button class="btn-danger" data-delgasto="${x.id}">Excluir</button></td></tr>`).join('')+'</table>'}
@@ -252,7 +305,7 @@ function startSync(user){
   clearListeners();const p=paths(user.uid);$('syncStatus').textContent='Sincronizando…';
   unsubs.push(onSnapshot(p.config,async snap=>{
     if(snap.exists())state.config={...DEFAULT_CONFIG,...snap.data()};
-    else await setDoc(p.config,{...DEFAULT_CONFIG,updatedAt:serverTimestamp()});
+    else await setDoc(p.config,{...DEFAULT_CONFIG,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
     render();
   }));
   unsubs.push(onSnapshot(p.horas,s=>{state.hes=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
@@ -345,9 +398,19 @@ getRedirectResult(auth).catch(e=>{
 $('btnSair').onclick=()=>signOut(auth);
 
 onAuthStateChanged(auth,user=>{
+  clearListeners();
+  state={config:{...DEFAULT_CONFIG},hes:[],gastos:[],fechamentos:[]};
   currentUser=user;
-  if(user){$('authScreen').classList.add('hidden');$('app').style.display='block';$('userEmail').textContent=user.email||'';startSync(user)}
-  else{clearListeners();$('app').style.display='none';$('authScreen').classList.remove('hidden')}
+  if(user){
+    $('authScreen').classList.add('hidden');
+    $('app').style.display='block';
+    $('userEmail').textContent=user.email||user.displayName||'Conta Google';
+    render();
+    startSync(user);
+  }else{
+    $('app').style.display='none';
+    $('authScreen').classList.remove('hidden');
+  }
 });
 
 $('btnAddHE').onclick=async()=>{
@@ -367,7 +430,19 @@ document.addEventListener('click',async e=>{
 });
 $('btnSalvarConfig').onclick=async()=>{
   if(!currentUser)return;
-  const cfg={salario:Number($('cfgSalario').value)||3437.90,jornada:Number($('cfgJornada').value)||220,meta50:Number($('cfgMeta50').value)||25,meta100:Number($('cfgMeta100').value)||10,fixos:Number($('cfgFixos').value)||0,diaInicio:Math.min(28,Math.max(1,Number($('cfgDia').value)||21)),horasDia:Math.max(.25,Number($('cfgHorasDia').value)||1.75),sabado100:Math.max(0,Number($('cfgSabado100').value)||4),domingoFim:[15,17].includes(Number($('cfgDomingoFim').value))?Number($('cfgDomingoFim').value):17,updatedAt:serverTimestamp()};
+  const cfg={
+    salario:Number($('cfgSalario').value)||0,
+    jornada:Number($('cfgJornada').value)||0,
+    meta50:Number($('cfgMeta50').value)||0,
+    meta100:Number($('cfgMeta100').value)||0,
+    fixos:Number($('cfgFixos').value)||0,
+    diaInicio:Math.min(28,Math.max(1,Number($('cfgDia').value)||21)),
+    horasDia:Number($('cfgHorasDia').value)||0,
+    sabado100:Number($('cfgSabado100').value)||0,
+    domingoFim:[15,17].includes(Number($('cfgDomingoFim').value))?Number($('cfgDomingoFim').value):0,
+    configurado:true,
+    updatedAt:serverTimestamp()
+  };
   await setDoc(paths(currentUser.uid).config,cfg,{merge:true});alert('Configurações salvas na nuvem.')
 };
 $('btnFechar').onclick=async()=>{
