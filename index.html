@@ -35,7 +35,7 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
   <div class="authCard">
     <h1>Controle Financeiro</h1>
     <p>Entre para sincronizar seus dados entre computador e celular.</p>
-    <div><label>E-mail</label><input type="email" id="loginEmail" autocomplete="email"></div>
+    <div><label>E-mail</label><input type="text" id="loginEmail" autocomplete="username"></div>
     <div style="margin-top:10px"><label>Senha</label><input type="password" id="loginSenha" autocomplete="current-password"></div>
     <div class="actions">
       <button class="btn-primary" id="btnEntrar">Entrar</button>
@@ -51,8 +51,6 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
       Entrar com Google
     </button>
     <div id="authMsg" class="authMsg"></div>
-    <button id="btnAdminMode" class="btn-dark" style="width:100%;margin-top:14px">Área administrativa</button>
-    <div id="adminHint" class="small" style="margin-top:8px;display:none">Use seu usuário administrativo.</div>
   </div>
 </div>
 
@@ -240,7 +238,7 @@ const DEFAULT_CONFIG={
   domingoFim:0,
   configurado:false
 };
-let currentUser=null, unsubs=[], accessUnsub=null, adminUnsub=null, isAdminUser=false, adminMode=false;
+let currentUser=null, unsubs=[], accessUnsub=null, adminUnsub=null, isAdminUser=false;
 let state={config:{...DEFAULT_CONFIG},hes:[],gastos:[],fechamentos:[]};
 let currentAccess=null, adminUsersCache=[];
 
@@ -530,9 +528,9 @@ function mensagemAuth(e){
 
 $('btnEntrar').onclick=async()=>{
   const loginDigitado=$('loginEmail').value.trim();
-  const email=adminMode && loginDigitado===ADMIN_LOGIN ? ADMIN_INTERNAL_EMAIL : loginDigitado;
+  const email=loginDigitado===ADMIN_LOGIN ? ADMIN_INTERNAL_EMAIL : loginDigitado;
   const senha=$('loginSenha').value;
-  if(!email){$('authMsg').textContent=adminMode?'Digite o usuário administrativo.':'Digite seu e-mail.';return;}
+  if(!email){$('authMsg').textContent='Digite seu e-mail.';return;}
   if(!senha){$('authMsg').textContent='Digite sua senha.';return;}
   try{
     $('authMsg').textContent='Entrando…';
@@ -546,6 +544,10 @@ $('btnEntrar').onclick=async()=>{
 $('btnCriar').onclick=async()=>{
   const email=$('loginEmail').value.trim();
   const senha=$('loginSenha').value;
+  if(email===ADMIN_LOGIN){
+    $('authMsg').textContent='Esse usuário é reservado.';
+    return;
+  }
   if(!email){$('authMsg').textContent='Digite seu e-mail.';return;}
   if(!senha){$('authMsg').textContent='Digite uma senha.';return;}
   if(senha.length<6){$('authMsg').textContent='A senha precisa ter pelo menos 6 caracteres.';return;}
@@ -590,16 +592,6 @@ getRedirectResult(auth).catch(e=>{
 });
 
 
-$('btnAdminMode').onclick=()=>{
-  adminMode=!adminMode;
-  $('adminHint').style.display=adminMode?'block':'none';
-  $('btnAdminMode').textContent=adminMode?'Voltar ao login normal':'Área administrativa';
-  $('loginEmail').value='';
-  $('loginSenha').value='';
-  $('loginEmail').type=adminMode?'text':'email';
-  $('loginEmail').placeholder=adminMode?'Castelhano04':'';
-  $('authMsg').textContent=adminMode?'Digite Castelhano04 e sua senha administrativa.':'';
-};
 $('btnPaySair').onclick=()=>signOut(auth);
 $('btnAdminSair').onclick=()=>signOut(auth);
 $('adminSearch').addEventListener('input',renderAdminUsers);
@@ -624,9 +616,7 @@ onAuthStateChanged(auth,async user=>{
 
   if(!user){
     $('authScreen').classList.remove('hidden');
-    adminMode=false;
-    $('adminHint').style.display='none';
-    $('loginEmail').type='email';
+    $('loginEmail').type='text';
     $('loginEmail').placeholder='';
     return;
   }
