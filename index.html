@@ -67,7 +67,13 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
   <div class="adminTop">
     <div class="heroTop">
       <div><h1 style="margin:0">Administração</h1><p style="margin:6px 0 0">Controle de testes, assinaturas, congelamentos e cancelamentos.</p></div>
-      <div><div id="adminEmail" class="small" style="color:#ede9fe"></div><button id="btnAdminSair" class="btn-light" style="margin-top:8px">Sair</button></div>
+      <div>
+        <div id="adminEmail" class="small" style="color:#ede9fe"></div>
+        <div class="actions">
+          <button id="btnAdminMeuControle" class="btn-light">Meu controle</button>
+          <button id="btnAdminSair" class="btn-light">Sair</button>
+        </div>
+      </div>
     </div>
   </div>
   <div class="adminStats">
@@ -95,6 +101,10 @@ button{border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:poin
       <div class="small" style="color:#dbeafe;margin-top:6px" id="userEmail"></div>
       <button class="btn-light" style="margin-top:8px" id="btnSair">Sair</button>
     </div>
+  </div>
+  <div id="ownerNav" class="actions hidden" style="margin-top:16px">
+    <button class="btn-light" id="btnOwnerControle">Meu controle</button>
+    <button class="btn-dark" id="btnOwnerAdmin">Administração</button>
   </div>
 </div>
 
@@ -461,6 +471,18 @@ function renderAdminUsers(){
       </td>
     </tr>`).join('')+`</table>`;
 }
+function showOwnerControl(){
+  if(!currentUser || !isOwnerGoogle(currentUser)) return;
+  if(adminUnsub){adminUnsub();adminUnsub=null}
+  $('adminPanel').style.display='none';
+  $('paywall').style.display='none';
+  $('app').style.display='block';
+  $('ownerNav').classList.remove('hidden');
+  $('userEmail').textContent=currentUser.email||currentUser.displayName||'Conta proprietária';
+  render();
+  startSync(currentUser);
+}
+
 function startAdminPanel(user){
   clearListeners();
   if(accessUnsub){accessUnsub();accessUnsub=null}
@@ -592,6 +614,11 @@ getRedirectResult(auth).catch(e=>{
 });
 
 
+$('btnOwnerAdmin').onclick=()=>{
+  if(currentUser && isOwnerGoogle(currentUser)) startAdminPanel(currentUser);
+};
+$('btnOwnerControle').onclick=()=>showOwnerControl();
+$('btnAdminMeuControle').onclick=()=>showOwnerControl();
 $('btnPaySair').onclick=()=>signOut(auth);
 $('btnAdminSair').onclick=()=>signOut(auth);
 $('adminSearch').addEventListener('input',renderAdminUsers);
@@ -613,6 +640,7 @@ onAuthStateChanged(auth,async user=>{
   state={config:{...DEFAULT_CONFIG},hes:[],gastos:[],fechamentos:[]};
   currentUser=user;currentAccess=null;isAdminUser=false;
   $('app').style.display='none';$('adminPanel').style.display='none';$('paywall').style.display='none';
+  $('ownerNav').classList.add('hidden');
 
   if(!user){
     $('authScreen').classList.remove('hidden');
@@ -626,9 +654,14 @@ onAuthStateChanged(auth,async user=>{
   isAdminUser=owner ? true : await checkAdmin(user);
 
   if(owner){
-    // Conta proprietária: sem teste, sem cobrança e com acesso administrativo total.
+    // Conta proprietária: acesso ilimitado ao próprio controle + aba administrativa.
     $('userEmail').textContent=user.email||user.displayName||'Conta proprietária';
-    startAdminPanel(user);
+    $('ownerNav').classList.remove('hidden');
+    $('adminPanel').style.display='none';
+    $('paywall').style.display='none';
+    $('app').style.display='block';
+    render();
+    startSync(user);
     return;
   }
 
